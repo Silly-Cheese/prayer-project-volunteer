@@ -1,0 +1,35 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-auth.js";
+import { getFirestore, collection, addDoc, doc, getDoc, setDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+
+const firebaseConfig={apiKey:"AIzaSyAaaABQB1T_SaZ6TARafIXjJ6Zk-upjLO0",authDomain:"prayer-projec.firebaseapp.com",projectId:"prayer-projec",storageBucket:"prayer-projec.firebasestorage.app",messagingSenderId:"47966669764",appId:"1:47966669764:web:b875d2ea5bf75e3b7b3291"};
+const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);
+const $=id=>document.getElementById(id);
+
+const applicationForm=$("applicationForm"),chapterForm=$("chapterForm"),inviteForm=$("inviteForm"),loginForm=$("loginForm"),activityForm=$("activityForm"),dashboard=$("dashboard");
+let currentVolunteer=null;
+
+setupTabs();
+applicationForm?.addEventListener("submit",submitApplication);
+chapterForm?.addEventListener("submit",submitChapterRequest);
+inviteForm?.addEventListener("submit",activateInvite);
+loginForm?.addEventListener("submit",loginVolunteer);
+activityForm?.addEventListener("submit",submitActivity);
+$("logoutBtn")?.addEventListener("click",()=>signOut(auth));
+
+onAuthStateChanged(auth,async user=>{if(!user){currentVolunteer=null;dashboard.hidden=true;return;}await loadVolunteer(user);});
+
+async function submitApplication(event){event.preventDefault();const btn=$("applicationBtn"),notice=$("applicationNotice");try{btn.disabled=true;btn.textContent="Submitting...";const email=cleanEmail($("appEmail").value);await addDoc(collection(db,"volunteer_applications"),{name:field("appName"),email,emailKey:email,age:Number($("appAge").value||0),location:field("appLocation"),interest:$("appInterest").value,why:field("appWhy"),experience:field("appExperience"),status:"submitted",createdAt:serverTimestamp(),updatedAt:serverTimestamp()});notice.textContent="Application submitted. If accepted, you will receive a temporary one-time code from an admin.";notice.className="notice success";applicationForm.reset();}catch(e){console.error(e);notice.textContent="Application could not be submitted. Check Firestore rules.";notice.className="notice error";}finally{btn.disabled=false;btn.textContent="Submit Application";}}
+
+async function submitChapterRequest(event){event.preventDefault();const btn=$("chapterBtn"),notice=$("chapterNotice");try{btn.disabled=true;btn.textContent="Submitting...";const email=cleanEmail($("chapterEmail").value);await addDoc(collection(db,"volunteer_chapter_requests"),{email,emailKey:emailKey(email),chapterName:field("chapterName"),chapterType:$("chapterType").value,location:field("chapterLocation"),purpose:field("chapterPurpose"),status:"submitted",createdAt:serverTimestamp(),updatedAt:serverTimestamp()});notice.textContent="Chapter request submitted for review.";notice.className="notice success";chapterForm.reset();}catch(e){console.error(e);notice.textContent="Chapter request could not be submitted. Check Firestore rules.";notice.className="notice error";}finally{btn.disabled=false;btn.textContent="Request Chapter";}}
+
+async function activateInvite(event){event.preventDefault();const notice=$("inviteNotice");try{const email=cleanEmail($("inviteEmail").value),code=$("inviteCode").value.trim(),password=$("newPassword").value;notice.textContent="Checking invite...";notice.className="notice";const inviteRef=doc(db,"volunteer_invites",emailKey(email));const invite=await getDoc(inviteRef);if(!invite.exists())throw new Error("No invite found for this email.");const data=invite.data();if(data.used===true)throw new Error("This invite code has already been used.");if(String(data.code||"").trim()!==code)throw new Error("The temporary code is incorrect.");const credential=await createUserWithEmailAndPassword(auth,email,password);await setDoc(doc(db,"volunteers",credential.user.uid),{uid:credential.user.uid,email,emailKey:emailKey(email),name:data.name||email,role:data.role||"Volunteer",status:"active",chapterId:data.chapterId||"",createdAt:serverTimestamp(),updatedAt:serverTimestamp()},{merge:true});await updateDoc(inviteRef,{used:true,usedAt:serverTimestamp(),uid:credential.user.uid});notice.textContent="Volunteer login created.";notice.className="notice success";inviteForm.reset();}catch(e){console.error(e);notice.textContent=e.message||"Invite activation failed.";notice.className="notice error";}}
+
+async function loginVolunteer(event){event.preventDefault();const notice=$("loginNotice");try{notice.textContent="Logging in...";notice.className="notice";await signInWithEmailAndPassword(auth,cleanEmail($("loginEmail").value),$("loginPassword").value);notice.textContent="Logged in.";notice.className="notice success";loginForm.reset();}catch(e){console.error(e);notice.textContent="Login failed. Check your email and password.";notice.className="notice error";}}
+
+async function loadVolunteer(user){try{const snap=await getDoc(doc(db,"volunteers",user.uid));if(!snap.exists()){dashboard.hidden=true;return;}currentVolunteer={id:user.uid,...snap.data()};$("volunteerName").textContent=currentVolunteer.name||user.email;$("volunteerStatus").textContent=currentVolunteer.status||"active";$("volunteerRole").textContent=currentVolunteer.role||"Volunteer";$("volunteerChapter").textContent=currentVolunteer.chapterId||"No chapter assigned yet";dashboard.hidden=false;dashboard.scrollIntoView({behavior:"smooth",block:"start"});}catch(e){console.error(e);}}
+
+async function submitActivity(event){event.preventDefault();const notice=$("activityNotice");if(!currentVolunteer)return;try{await addDoc(collection(db,"volunteer_activity_updates"),{uid:currentVolunteer.id,email:currentVolunteer.email,name:currentVolunteer.name,type:$("activityType").value,summary:field("activitySummary"),status:"submitted",createdAt:serverTimestamp()});notice.textContent="Activity update submitted.";notice.className="notice success";activityForm.reset();}catch(e){console.error(e);notice.textContent="Activity update could not be submitted.";notice.className="notice error";}}
+
+function setupTabs(){document.querySelectorAll(".tab").forEach(button=>button.addEventListener("click",()=>{document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));document.querySelectorAll(".tab-panel").forEach(x=>x.classList.remove("active"));button.classList.add("active");document.getElementById(button.dataset.tab+"Form")?.classList.add("active");}));}
+function field(id){return $(id).value.trim()}function cleanEmail(email=""){return String(email).trim().toLowerCase()}function emailKey(email=""){return cleanEmail(email).replace(/[.#$/\[\]]/g,"_")}
