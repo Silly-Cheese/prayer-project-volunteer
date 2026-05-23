@@ -1,0 +1,19 @@
+/* Professional Quality Layer for The Prayer Project Volunteer Network */
+:root{
+  --radius-xl:28px;
+  --radius-lg:22px;
+  --radius-md:16px;
+  --shadow-soft:0 18px 55px rgba(0,0,0,.28);
+  --shadow-panel:0 24px 80px rgba(0,0,0,.36);
+  --surface-a:rgba(255,255,255,.055);
+  --surface-b:rgba(255,255,255,.032);
+  --surface-warm:rgba(216,195,165,.075);
+}
+
+html,body{max-width:100%;overflow-x:hidden}.nav{z-index:80}.nav-inner{min-height:76px}.brand{min-width:0}.brand span:last-child{overflow-wrap:anywhere}.nav-links a.active{color:var(--warm2);border-color:var(--line2);background:rgba(216,195,165,.12)}.nav-toggle{display:none;border:1px solid var(--line);background:rgba(255,255,255,.055);color:var(--warm2);border-radius:999px;padding:10px 13px;font-weight:900}.panel,.card,.hero-card,.feature-card,.portal-action,.record-card,.metric,.admin-setting-card{box-shadow:var(--shadow-soft);backdrop-filter:blur(10px)}.panel,.card{border-radius:var(--radius-xl)}.btn{line-height:1.2}.btn:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible{outline:3px solid rgba(216,195,165,.34);outline-offset:3px}.lead{color:#d8cec1}.muted,p{color:#c8bdad}.eyebrow{margin-bottom:10px}.section-block+.section-block{padding-top:18px}.profile-detail strong,.meta span,.pill,.code-box{word-break:break-word}.portal-sidebar{box-shadow:var(--shadow-panel)}.portal-welcome,.mission-card,.hero-panel>div{border-color:rgba(216,195,165,.22)}.portal-action{transition:.16s ease}.portal-action:hover{transform:translateY(-2px);border-color:var(--line2);background:rgba(216,195,165,.065)}.journey-map div{position:relative}.journey-map div:before{content:"";position:absolute;left:12px;top:12px;width:7px;height:7px;border-radius:50%;background:var(--warm)}.journey-map div{padding-left:28px}.portal-main .split{align-items:stretch}.portal-main .split .panel{height:100%}.admin-sidebar{max-height:calc(100vh - 120px);overflow:auto}.admin-tab{line-height:1.25}.record-card .toolbar,.item .toolbar{gap:8px}.record-card .btn,.item .btn{min-height:40px;padding:11px 14px}.admin-action-card,.provision-card{width:min(720px,calc(100% - 28px))}.permission-designer{max-width:100%}.permission-groups{min-width:0}.permission-card{min-width:0}.permission-card span{min-width:0}.standard-banner{box-shadow:var(--shadow-soft)}
+
+/* Role-aware elements stay hidden until the shell confirms access. */
+.site-shell-loading [data-admin-only],.site-shell-loading [data-trainer-only],.site-shell-loading [data-auth-only]{display:none!important}[hidden]{display:none!important}
+
+@media(max-width:860px){.nav-toggle{display:inline-flex}.nav-inner{position:relative}.nav-links{display:none;width:100%;grid-template-columns:1fr 1fr;gap:8px}.nav-links.open{display:grid}.nav-links a,.nav-links button{justify-content:center;text-align:center}.brand{flex:1}.dashboard .dash-head{display:grid}.dashboard .dash-head .btn{width:max-content}.portal-sidebar .profile-name{font-size:20px}.portal-action:hover{transform:none}.admin-sidebar{max-height:none;overflow:visible}}
+@media(max-width:560px){.nav-links{grid-template-columns:1fr}.shell,.page-shell,.admin-shell{width:min(100% - 20px,1240px)!important}.panel,.card,.hero-card,.feature-card,.portal-action,.record-card,.metric,.admin-setting-card{box-shadow:0 14px 36px rgba(0,0,0,.24)}.btn{width:100%}.dash-head .btn{width:100%!important}h1{letter-spacing:-.035em}.meta span{width:100%;text-align:left}.profile-detail div{display:block}.portal-main .split{gap:12px}.admin-action-card,.provision-card{padding:22px!important;border-radius:22px!important}}
