@@ -8,6 +8,7 @@ const auth=getAuth(app);
 
 markActiveNav();
 createMobileNavToggle();
+closeMoreMenuOnOutsideClick();
 document.documentElement.classList.add('site-shell-loading');
 
 onAuthStateChanged(auth,async user=>{
@@ -17,6 +18,7 @@ onAuthStateChanged(auth,async user=>{
   }catch(error){
     applyRoleVisibility({admin:false,trainer:false});
   }finally{
+    cleanEmptyMenus();
     document.documentElement.classList.remove('site-shell-loading');
     document.documentElement.classList.add('site-shell-ready');
   }
@@ -51,5 +53,24 @@ function createMobileNavToggle(){
   button.addEventListener('click',()=>{
     links.classList.toggle('open');
     button.textContent=links.classList.contains('open')?'Close':'Menu';
+  });
+}
+
+function closeMoreMenuOnOutsideClick(){
+  document.addEventListener('click',event=>{
+    document.querySelectorAll('.nav-more[open]').forEach(menu=>{
+      if(!menu.contains(event.target))menu.removeAttribute('open');
+    });
+  });
+  document.addEventListener('keydown',event=>{
+    if(event.key==='Escape')document.querySelectorAll('.nav-more[open]').forEach(menu=>menu.removeAttribute('open'));
+  });
+}
+
+function cleanEmptyMenus(){
+  document.querySelectorAll('.nav-menu').forEach(menu=>{
+    const visibleLinks=[...menu.querySelectorAll('a')].filter(link=>!link.hidden);
+    const details=menu.closest('details');
+    if(details)details.hidden=visibleLinks.length===0;
   });
 }
