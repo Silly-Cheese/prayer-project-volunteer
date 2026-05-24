@@ -12,12 +12,20 @@ service cloud.firestore {
         && request.auth.token.email == 'christophershelley257@gmail.com';
     }
 
-    function volunteerDoc() {
+    function volunteerPath() {
       return /databases/$(database)/documents/volunteers/$(request.auth.uid);
     }
 
     function isSelf(uid) {
       return signedIn() && request.auth.uid == uid;
+    }
+
+    function hasVolunteerProfile() {
+      return signedIn() && exists(volunteerPath());
+    }
+
+    function currentVolunteer() {
+      return get(volunteerPath()).data;
     }
 
     function isAdmin() {
@@ -26,8 +34,8 @@ service cloud.firestore {
           ownerEmail()
           || exists(/databases/$(database)/documents/admins/$(request.auth.uid))
           || (
-            exists(volunteerDoc())
-            && get(volunteerDoc()).data.permissions.hasAny(['admin:limited'])
+            hasVolunteerProfile()
+            && currentVolunteer().permissions.hasAny(['admin:limited'])
           )
         );
     }
@@ -37,8 +45,8 @@ service cloud.firestore {
         && (
           isAdmin()
           || (
-            exists(volunteerDoc())
-            && get(volunteerDoc()).data.permissions.hasAny(['training:trainer'])
+            hasVolunteerProfile()
+            && currentVolunteer().permissions.hasAny(['training:trainer'])
           )
         );
     }
@@ -47,6 +55,7 @@ service cloud.firestore {
       allow read: if resource.data.status == 'approved'
                   || resource.data.status == 'answered'
                   || isAdmin();
+
       allow create: if request.resource.data.title is string
         && request.resource.data.message is string
         && request.resource.data.email is string
@@ -56,18 +65,26 @@ service cloud.firestore {
         && request.resource.data.reportCount == 0
         && request.resource.data.answered == false
         && request.resource.data.status == 'approved';
+
       allow update: if isAdmin()
         || (
           resource.data.status == 'approved'
-          && request.resource.data.diff(resource.data).changedKeys().hasOnly(['prayerCount','updatedAt'])
+          && request.resource.data.diff(resource.data).changedKeys().hasOnly(['prayerCount', 'updatedAt'])
           && request.resource.data.prayerCount == resource.data.prayerCount + 1
         )
         || (
           resource.data.status == 'approved'
           && request.resource.data.status == 'reported'
           && request.resource.data.reportCount == resource.data.reportCount + 1
-          && request.resource.data.diff(resource.data).changedKeys().hasOnly(['reportCount','status','updatedAt'])
+          && request.resource.data.diff(resource.data).changedKeys().hasOnly(['reportCount', 'status', 'updatedAt'])
+        )
+        || (
+          resource.data.status == 'approved'
+          && resource.data.answered != true
+          && request.resource.data.answered == true
+          && request.resource.data.diff(resource.data).changedKeys().hasOnly(['answered', 'answeredAt', 'answeredTestimony', 'updatedAt'])
         );
+
       allow delete: if isAdmin();
     }
 
@@ -98,27 +115,23 @@ service cloud.firestore {
         && request.resource.data.why is string
         && request.resource.data.status == 'submitted';
 
-      /*
-        This lets old accepted application temporary codes work.
-        It only permits a signed-in user to query/read accepted applications matching their own Auth emailKey.
-        Admins can still read everything.
-      */
       allow get, list: if isAdmin()
         || (
           signedIn()
-          && resource.data.emailKey == request.auth.token.email.replace('.', '_').replace('#', '_').replace('$', '_').replace('[', '_').replace(']', '_')
-          && resource.data.status == 'accepted'
+          && resource.data.email == request.auth.token.email
+          && resource.data.status in ['accepted', 'activated']
         );
 
       allow update: if isAdmin()
         || (
           signedIn()
-          && resource.data.emailKey == request.auth.token.email.replace('.', '_').replace('#', '_').replace('$', '_').replace('[', '_').replace(']', '_')
+          && resource.data.email == request.auth.token.email
           && resource.data.status == 'accepted'
           && request.resource.data.status == 'activated'
           && request.resource.data.activatedUid == request.auth.uid
-          && request.resource.data.diff(resource.data).changedKeys().hasOnly(['activatedUid','activatedAt','status','updatedAt'])
+          && request.resource.data.diff(resource.data).changedKeys().hasOnly(['activatedUid', 'activatedAt', 'status', 'updatedAt'])
         );
+
       allow delete: if isAdmin();
     }
 
@@ -126,9 +139,11 @@ service cloud.firestore {
       allow get: if true;
       allow list: if isAdmin();
       allow create, delete: if isAdmin();
+
       allow update: if isAdmin()
         || (
           signedIn()
+          && resource.data.email == request.auth.token.email
           && resource.data.emailKey == inviteId
           && request.resource.data.emailKey == resource.data.emailKey
           && request.resource.data.email == resource.data.email
@@ -137,29 +152,32 @@ service cloud.firestore {
           && request.resource.data.used == true
           && request.resource.data.status == 'used'
           && request.resource.data.uid == request.auth.uid
-          && request.resource.data.diff(resource.data).changedKeys().hasOnly(['used','usedAt','uid','status'])
+          && request.resource.data.diff(resource.data).changedKeys().hasOnly(['used', 'usedAt', 'uid', 'status'])
         );
     }
 
     match /volunteers/{volunteerId} {
       allow read: if isSelf(volunteerId) || isAdmin() || isTrainer();
+
       allow create: if isSelf(volunteerId)
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.email == request.auth.token.email;
+
       allow update: if isAdmin()
         || (
           isSelf(volunteerId)
           && request.resource.data.diff(resource.data).changedKeys().hasOnly([
-            'agreementAccepted','agreementAcceptedAt','trainingCompleted','trainingCompletedAt','updatedAt'
+            'agreementAccepted',
+            'agreementAcceptedAt',
+            'trainingCompleted',
+            'trainingCompletedAt',
+            'requirePasswordReset',
+            'passwordResetCompletedAt',
+            'updatedAt'
           ])
         );
-      allow delete: if isAdmin();
-    }
 
-    match /chapter_members/{memberId} {
-      allow read: if isAdmin() || isTrainer();
-      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
-      allow update, delete: if isAdmin();
+      allow delete: if isAdmin();
     }
 
     match /volunteer_chapter_requests/{chapterId} {
@@ -177,6 +195,12 @@ service cloud.firestore {
     match /volunteer_chapters/{chapterId} {
       allow read: if true;
       allow create, update, delete: if isAdmin();
+    }
+
+    match /chapter_members/{memberId} {
+      allow read: if isAdmin() || isTrainer();
+      allow create: if isAdmin() || (signedIn() && request.resource.data.uid == request.auth.uid);
+      allow update, delete: if isAdmin();
     }
 
     match /chapter_reports/{reportId} {
@@ -206,7 +230,7 @@ service cloud.firestore {
         || (
           signedIn()
           && resource.data.assignedToUid == request.auth.uid
-          && request.resource.data.diff(resource.data).changedKeys().hasOnly(['status','completedAt','volunteerResponse','updatedAt'])
+          && request.resource.data.diff(resource.data).changedKeys().hasOnly(['status', 'completedAt', 'volunteerResponse', 'updatedAt'])
         );
     }
 
@@ -309,6 +333,31 @@ service cloud.firestore {
     match /volunteer_resources/{resourceId} {
       allow read: if true;
       allow create, update, delete: if isAdmin();
+    }
+
+    match /volunteer_documents/{documentId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /volunteer_policies/{policyId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /volunteer_forms/{formId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /volunteer_checklists/{checklistId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin() || isTrainer();
+    }
+
+    match /volunteer_incidents/{incidentId} {
+      allow create: if signedIn();
+      allow read, update, delete: if isAdmin();
     }
 
     match /{document=**} {
