@@ -43,15 +43,10 @@ service cloud.firestore {
         );
     }
 
-    /*
-      MAIN PRAYER PROJECT SITE
-    */
-
     match /prayer_requests/{requestId} {
       allow read: if resource.data.status == 'approved'
                   || resource.data.status == 'answered'
                   || isAdmin();
-
       allow create: if request.resource.data.title is string
         && request.resource.data.message is string
         && request.resource.data.email is string
@@ -61,7 +56,6 @@ service cloud.firestore {
         && request.resource.data.reportCount == 0
         && request.resource.data.answered == false
         && request.resource.data.status == 'approved';
-
       allow update: if isAdmin()
         || (
           resource.data.status == 'approved'
@@ -74,7 +68,6 @@ service cloud.firestore {
           && request.resource.data.reportCount == resource.data.reportCount + 1
           && request.resource.data.diff(resource.data).changedKeys().hasOnly(['reportCount','status','updatedAt'])
         );
-
       allow delete: if isAdmin();
     }
 
@@ -98,26 +91,41 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
-    /*
-      VOLUNTEER APPLICATIONS AND ACTIVATION
-    */
-
     match /volunteer_applications/{applicationId} {
       allow create: if request.resource.data.name is string
         && request.resource.data.email is string
         && request.resource.data.emailKey is string
         && request.resource.data.why is string
         && request.resource.data.status == 'submitted';
-      allow read, update, delete: if isAdmin();
+
+      /*
+        This lets old accepted application temporary codes work.
+        It only permits a signed-in user to query/read accepted applications matching their own Auth emailKey.
+        Admins can still read everything.
+      */
+      allow get, list: if isAdmin()
+        || (
+          signedIn()
+          && resource.data.emailKey == request.auth.token.email.replace('.', '_').replace('#', '_').replace('$', '_').replace('[', '_').replace(']', '_')
+          && resource.data.status == 'accepted'
+        );
+
+      allow update: if isAdmin()
+        || (
+          signedIn()
+          && resource.data.emailKey == request.auth.token.email.replace('.', '_').replace('#', '_').replace('$', '_').replace('[', '_').replace(']', '_')
+          && resource.data.status == 'accepted'
+          && request.resource.data.status == 'activated'
+          && request.resource.data.activatedUid == request.auth.uid
+          && request.resource.data.diff(resource.data).changedKeys().hasOnly(['activatedUid','activatedAt','status','updatedAt'])
+        );
+      allow delete: if isAdmin();
     }
 
     match /volunteer_invites/{inviteId} {
-      /* Public get is required so an applicant can check their temporary code before their Auth account exists. */
       allow get: if true;
       allow list: if isAdmin();
       allow create, delete: if isAdmin();
-
-      /* Admins may update anything. A newly signed-in activating user may only mark their own invite used. */
       allow update: if isAdmin()
         || (
           signedIn()
@@ -135,12 +143,9 @@ service cloud.firestore {
 
     match /volunteers/{volunteerId} {
       allow read: if isSelf(volunteerId) || isAdmin() || isTrainer();
-
-      /* Activation may create the volunteer profile after the temporary code is verified client-side. */
       allow create: if isSelf(volunteerId)
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.email == request.auth.token.email;
-
       allow update: if isAdmin()
         || (
           isSelf(volunteerId)
@@ -148,7 +153,6 @@ service cloud.firestore {
             'agreementAccepted','agreementAcceptedAt','trainingCompleted','trainingCompletedAt','updatedAt'
           ])
         );
-
       allow delete: if isAdmin();
     }
 
@@ -157,10 +161,6 @@ service cloud.firestore {
       allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
       allow update, delete: if isAdmin();
     }
-
-    /*
-      CHAPTERS
-    */
 
     match /volunteer_chapter_requests/{chapterId} {
       allow read: if true;
@@ -184,10 +184,6 @@ service cloud.firestore {
       allow read, update, delete: if isAdmin();
     }
 
-    /*
-      TRAINING
-    */
-
     match /volunteer_training_plans/{planId} {
       allow read: if isAdmin() || isTrainer() || isSelf(planId);
       allow create, update, delete: if isAdmin() || isTrainer();
@@ -199,10 +195,6 @@ service cloud.firestore {
         && request.resource.data.reflection is string;
       allow read, update, delete: if isAdmin() || isTrainer();
     }
-
-    /*
-      ASSIGNMENTS AND SERVICE
-    */
 
     match /volunteer_assignments/{assignmentId} {
       allow read: if isAdmin()
@@ -279,10 +271,6 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
-    /*
-      ADMIN AND AUDIT
-    */
-
     match /admins/{adminId} {
       allow read: if signedIn();
       allow create, update, delete: if ownerEmail();
@@ -292,10 +280,6 @@ service cloud.firestore {
       allow read, create: if isAdmin();
       allow update, delete: if false;
     }
-
-    /*
-      OPTIONAL EXPANSION COLLECTIONS
-    */
 
     match /volunteer_program_status/{statusId} {
       allow read: if true;
