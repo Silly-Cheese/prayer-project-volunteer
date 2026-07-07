@@ -20,35 +20,11 @@ const PERMISSIONS=[
   {id:'reports:view',label:'View Reports',description:'Can view V2 operations reports and summaries.',group:'Reporting'},
   {id:'admin:limited',label:'Limited Admin Assistance',description:'Can assist with limited administrative work.',group:'Administration'}
 ];
-
-const PRESETS={
-  basic:['activity:create','service:log','training:complete'],
-  standard:['activity:create','service:log','chapter:request','outreach:create','training:complete'],
-  chapter:['activity:create','service:log','chapter:request','chapter:lead','outreach:create','training:complete'],
-  trainer:['activity:create','service:log','chapter:request','outreach:create','training:complete','training:trainer','service:approve','reports:view'],
-  admin:['activity:create','service:log','chapter:request','chapter:lead','outreach:create','prayer:team','training:complete','training:trainer','service:approve','performance:review','communications:post','recognition:create','reports:view','admin:limited']
-};
-
-let pendingPermissionSet=null;
-let lastVolunteerId=null;
-
-installPermissionStyles();
-loadV2AdminLayer();
-waitForPermissionSelect();
-
-document.addEventListener('click',async event=>{
-  const editButton=event.target.closest('.update-volunteer');
-  const acceptButton=event.target.closest('.accept-app');
-  if(acceptButton){lastVolunteerId=null;pendingPermissionSet=null;setTimeout(()=>applyPreset('standard'),80);}
-  if(editButton){lastVolunteerId=editButton.dataset.id||'';try{const snap=await getDoc(doc(db,'volunteers',lastVolunteerId));const data=snap.exists()?snap.data():{};pendingPermissionSet=Array.isArray(data.permissions)?data.permissions:PRESETS.standard;setTimeout(()=>setPermissions(pendingPermissionSet),80);}catch(error){console.warn('Could not load volunteer permissions.',error);setTimeout(()=>setPermissions(PRESETS.standard),80);}}
-},true);
-
-function loadV2AdminLayer(){
-  if(!document.querySelector('link[href="./v2-volunteer-network.css"]')){const link=document.createElement('link');link.rel='stylesheet';link.href='./v2-volunteer-network.css';document.head.appendChild(link);}
-  import('./v2-admin-review-center.js').catch(error=>console.warn('V2 admin review center unavailable.',error));
-  import('./v2-admin-operations.js').catch(error=>console.warn('V2 admin operations unavailable.',error));
-}
-
+const PRESETS={basic:['activity:create','service:log','training:complete'],standard:['activity:create','service:log','chapter:request','outreach:create','training:complete'],chapter:['activity:create','service:log','chapter:request','chapter:lead','outreach:create','training:complete'],trainer:['activity:create','service:log','chapter:request','outreach:create','training:complete','training:trainer','service:approve','reports:view'],admin:['activity:create','service:log','chapter:request','chapter:lead','outreach:create','prayer:team','training:complete','training:trainer','service:approve','performance:review','communications:post','recognition:create','reports:view','admin:limited']};
+let pendingPermissionSet=null;let lastVolunteerId=null;
+installPermissionStyles();loadV2AdminLayer();waitForPermissionSelect();
+document.addEventListener('click',async event=>{const editButton=event.target.closest('.update-volunteer');const acceptButton=event.target.closest('.accept-app');if(acceptButton){lastVolunteerId=null;pendingPermissionSet=null;setTimeout(()=>applyPreset('standard'),80);}if(editButton){lastVolunteerId=editButton.dataset.id||'';try{const snap=await getDoc(doc(db,'volunteers',lastVolunteerId));const data=snap.exists()?snap.data():{};pendingPermissionSet=Array.isArray(data.permissions)?data.permissions:PRESETS.standard;setTimeout(()=>setPermissions(pendingPermissionSet),80);}catch(error){console.warn('Could not load volunteer permissions.',error);setTimeout(()=>setPermissions(PRESETS.standard),80);}}},true);
+function loadV2AdminLayer(){if(!document.querySelector('link[href="./v2-volunteer-network.css"]')){const link=document.createElement('link');link.rel='stylesheet';link.href='./v2-volunteer-network.css';document.head.appendChild(link);}import('./v2-admin-review-center.js').catch(error=>console.warn('V2 admin review center unavailable.',error));import('./v2-admin-operations.js').catch(error=>console.warn('V2 admin operations unavailable.',error));import('./manual-account-admin.js').catch(error=>console.warn('Manual account center unavailable.',error));}
 function waitForPermissionSelect(){const timer=setInterval(()=>{const select=document.getElementById('provPermissions');if(!select)return;clearInterval(timer);buildPermissionInterface(select);},100);}
 function buildPermissionInterface(select){if(document.getElementById('permissionDesigner'))return;select.style.display='none';select.setAttribute('aria-hidden','true');select.insertAdjacentHTML('afterend',renderDesigner());document.getElementById('permissionDesigner').addEventListener('change',event=>{const checkbox=event.target.closest('[data-permission]');if(checkbox) syncSelectFromCards();});document.getElementById('permissionDesigner').addEventListener('click',event=>{const preset=event.target.closest('[data-permission-preset]');const clear=event.target.closest('[data-permission-clear]');if(preset) applyPreset(preset.dataset.permissionPreset);if(clear) setPermissions([]);});setPermissions(PRESETS.standard);}
 function renderDesigner(){const groups=[...new Set(PERMISSIONS.map(p=>p.group))];return `<section class="permission-designer" id="permissionDesigner"><div class="permission-head"><div><h3>Permission Access</h3><p>Choose only what this volunteer should be allowed to do. Presets are optional and can be adjusted.</p></div><div class="permission-count" id="permissionCount">0 selected</div></div><div class="permission-presets"><button type="button" data-permission-preset="basic">Basic</button><button type="button" data-permission-preset="standard">Standard</button><button type="button" data-permission-preset="chapter">Chapter Lead</button><button type="button" data-permission-preset="trainer">Trainer</button><button type="button" data-permission-preset="admin">Limited Admin</button><button type="button" data-permission-clear>Clear</button></div><div class="permission-groups">${groups.map(group=>`<div class="permission-group"><h4>${escapeHtml(group)}</h4>${PERMISSIONS.filter(p=>p.group===group).map(permissionCard).join('')}</div>`).join('')}</div></section>`;}
