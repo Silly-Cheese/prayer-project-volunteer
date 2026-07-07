@@ -1,14 +1,14 @@
-import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js";
+import { getApp } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-auth.js";
 import { getAccessProfile } from "./access-control.js";
 
-const firebaseConfig={apiKey:"AIzaSyAaaABQB1T_SaZ6TARafIXjJ6Zk-upjLO0",authDomain:"prayer-projec.firebaseapp.com",projectId:"prayer-projec",storageBucket:"prayer-projec.firebasestorage.app",messagingSenderId:"47966669764",appId:"1:47966669764:web:b875d2ea5bf75e3b7b3291"};
-const app=getApps().length?getApp():initializeApp(firebaseConfig);
+const app=getApp();
 const auth=getAuth(app);
 
 markActiveNav();
 createMobileNavToggle();
 closeMoreMenuOnOutsideClick();
+loadV2VolunteerLayer();
 document.documentElement.classList.add('site-shell-loading');
 
 onAuthStateChanged(auth,async user=>{
@@ -23,6 +23,16 @@ onAuthStateChanged(auth,async user=>{
     document.documentElement.classList.add('site-shell-ready');
   }
 });
+
+function loadV2VolunteerLayer(){
+  if(!document.querySelector('link[href="./v2-volunteer-network.css"]')){
+    const link=document.createElement('link');
+    link.rel='stylesheet';
+    link.href='./v2-volunteer-network.css';
+    document.head.appendChild(link);
+  }
+  import('./v2-volunteer-network.js').catch(error=>console.warn('V2 volunteer layer unavailable.',error));
+}
 
 function markActiveNav(){
   const current=(location.pathname.split('/').pop()||'index.html').toLowerCase();
