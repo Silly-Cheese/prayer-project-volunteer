@@ -55,7 +55,6 @@ service cloud.firestore {
       allow read: if resource.data.status == 'approved'
                   || resource.data.status == 'answered'
                   || isAdmin();
-
       allow create: if request.resource.data.title is string
         && request.resource.data.message is string
         && request.resource.data.email is string
@@ -65,26 +64,10 @@ service cloud.firestore {
         && request.resource.data.reportCount == 0
         && request.resource.data.answered == false
         && request.resource.data.status == 'approved';
-
       allow update: if isAdmin()
-        || (
-          resource.data.status == 'approved'
-          && request.resource.data.diff(resource.data).changedKeys().hasOnly(['prayerCount', 'updatedAt'])
-          && request.resource.data.prayerCount == resource.data.prayerCount + 1
-        )
-        || (
-          resource.data.status == 'approved'
-          && request.resource.data.status == 'reported'
-          && request.resource.data.reportCount == resource.data.reportCount + 1
-          && request.resource.data.diff(resource.data).changedKeys().hasOnly(['reportCount', 'status', 'updatedAt'])
-        )
-        || (
-          resource.data.status == 'approved'
-          && resource.data.answered != true
-          && request.resource.data.answered == true
-          && request.resource.data.diff(resource.data).changedKeys().hasOnly(['answered', 'answeredAt', 'answeredTestimony', 'updatedAt'])
-        );
-
+        || (resource.data.status == 'approved' && request.resource.data.diff(resource.data).changedKeys().hasOnly(['prayerCount', 'updatedAt']) && request.resource.data.prayerCount == resource.data.prayerCount + 1)
+        || (resource.data.status == 'approved' && request.resource.data.status == 'reported' && request.resource.data.reportCount == resource.data.reportCount + 1 && request.resource.data.diff(resource.data).changedKeys().hasOnly(['reportCount', 'status', 'updatedAt']))
+        || (resource.data.status == 'approved' && resource.data.answered != true && request.resource.data.answered == true && request.resource.data.diff(resource.data).changedKeys().hasOnly(['answered', 'answeredAt', 'answeredTestimony', 'updatedAt']));
       allow delete: if isAdmin();
     }
 
@@ -114,24 +97,10 @@ service cloud.firestore {
         && request.resource.data.emailKey is string
         && request.resource.data.why is string
         && request.resource.data.status == 'submitted';
-
       allow get, list: if isAdmin()
-        || (
-          signedIn()
-          && resource.data.email == request.auth.token.email
-          && resource.data.status in ['accepted', 'activated']
-        );
-
+        || (signedIn() && resource.data.email == request.auth.token.email && resource.data.status in ['accepted', 'activated']);
       allow update: if isAdmin()
-        || (
-          signedIn()
-          && resource.data.email == request.auth.token.email
-          && resource.data.status == 'accepted'
-          && request.resource.data.status == 'activated'
-          && request.resource.data.activatedUid == request.auth.uid
-          && request.resource.data.diff(resource.data).changedKeys().hasOnly(['activatedUid', 'activatedAt', 'status', 'updatedAt'])
-        );
-
+        || (signedIn() && resource.data.email == request.auth.token.email && resource.data.status == 'accepted' && request.resource.data.status == 'activated' && request.resource.data.activatedUid == request.auth.uid && request.resource.data.diff(resource.data).changedKeys().hasOnly(['activatedUid', 'activatedAt', 'status', 'updatedAt']));
       allow delete: if isAdmin();
     }
 
@@ -139,44 +108,25 @@ service cloud.firestore {
       allow get: if true;
       allow list: if isAdmin();
       allow create, delete: if isAdmin();
-
       allow update: if isAdmin()
-        || (
-          signedIn()
-          && resource.data.email == request.auth.token.email
-          && resource.data.emailKey == inviteId
-          && request.resource.data.emailKey == resource.data.emailKey
-          && request.resource.data.email == resource.data.email
-          && resource.data.used == false
-          && resource.data.status == 'active'
-          && request.resource.data.used == true
-          && request.resource.data.status == 'used'
-          && request.resource.data.uid == request.auth.uid
-          && request.resource.data.diff(resource.data).changedKeys().hasOnly(['used', 'usedAt', 'uid', 'status'])
-        );
+        || (signedIn() && resource.data.email == request.auth.token.email && resource.data.emailKey == inviteId && request.resource.data.emailKey == resource.data.emailKey && request.resource.data.email == resource.data.email && resource.data.used == false && resource.data.status == 'active' && request.resource.data.used == true && request.resource.data.status == 'used' && request.resource.data.uid == request.auth.uid && request.resource.data.diff(resource.data).changedKeys().hasOnly(['used', 'usedAt', 'uid', 'status']));
     }
 
     match /volunteers/{volunteerId} {
       allow read: if isSelf(volunteerId) || isAdmin() || isTrainer();
-
       allow create: if isSelf(volunteerId)
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.email == request.auth.token.email;
-
       allow update: if isAdmin()
-        || (
-          isSelf(volunteerId)
+        || isTrainer()
+        || (isSelf(volunteerId)
           && request.resource.data.diff(resource.data).changedKeys().hasOnly([
-            'agreementAccepted',
-            'agreementAcceptedAt',
-            'trainingCompleted',
-            'trainingCompletedAt',
-            'requirePasswordReset',
-            'passwordResetCompletedAt',
-            'updatedAt'
-          ])
-        );
-
+            'agreementAccepted', 'agreementAcceptedAt',
+            'trainingReviewStatus', 'trainingSubmittedAt',
+            'trainingCompleted', 'trainingCompletedAt',
+            'preferredName', 'church', 'emergencyContact', 'volunteerProfileNotes', 'profileUpdatedAt',
+            'requirePasswordReset', 'passwordResetCompletedAt', 'updatedAt'
+          ]));
       allow delete: if isAdmin();
     }
 
@@ -221,17 +171,11 @@ service cloud.firestore {
     }
 
     match /volunteer_assignments/{assignmentId} {
-      allow read: if isAdmin()
-        || isTrainer()
-        || (signedIn() && resource.data.assignedToUid == request.auth.uid);
+      allow read: if isAdmin() || isTrainer() || (signedIn() && resource.data.assignedToUid == request.auth.uid);
       allow create, delete: if isAdmin() || isTrainer();
       allow update: if isAdmin()
         || isTrainer()
-        || (
-          signedIn()
-          && resource.data.assignedToUid == request.auth.uid
-          && request.resource.data.diff(resource.data).changedKeys().hasOnly(['status', 'completedAt', 'volunteerResponse', 'updatedAt'])
-        );
+        || (signedIn() && resource.data.assignedToUid == request.auth.uid && request.resource.data.diff(resource.data).changedKeys().hasOnly(['status', 'completedAt', 'volunteerResponse', 'updatedAt']));
     }
 
     match /volunteer_activity_updates/{activityId} {
@@ -243,7 +187,8 @@ service cloud.firestore {
       allow create: if signedIn()
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.summary is string;
-      allow read, update, delete: if isAdmin() || isTrainer();
+      allow read: if isAdmin() || isTrainer() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow update, delete: if isAdmin() || isTrainer();
     }
 
     match /volunteer_care_projects/{projectId} {
@@ -270,6 +215,10 @@ service cloud.firestore {
         && request.resource.data.details is string
         && request.resource.data.status == 'submitted';
       allow read, update, delete: if isAdmin();
+    }
+
+    match /volunteer_performance_reviews/{reviewId} {
+      allow read, create, update, delete: if isAdmin() || isTrainer();
     }
 
     match /volunteer_announcements/{announcementId} {
@@ -301,7 +250,7 @@ service cloud.firestore {
     }
 
     match /audit_logs/{logId} {
-      allow read, create: if isAdmin();
+      allow read, create: if isAdmin() || isTrainer();
       allow update, delete: if false;
     }
 
