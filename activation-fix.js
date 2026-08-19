@@ -64,7 +64,16 @@ async function activateFromInvite(inviteRef,data,email,code,password,notice){
 
 async function activateFromOldApplication(email,code,password,notice){
   const user=await createOrSignIn(email,password,notice);
-  const appQuery=query(collection(db,"volunteer_applications"),where("emailKey","==",emailKey(email)),where("status","==","accepted"),limit(5));
+  // The canonical rules allow this legacy fallback only when Firestore can
+  // prove the query is restricted to the authenticated user's own accepted
+  // application. Keep both email and status constraints in this query.
+  const appQuery=query(
+    collection(db,"volunteer_applications"),
+    where("email","==",email),
+    where("emailKey","==",emailKey(email)),
+    where("status","==","accepted"),
+    limit(5)
+  );
   const appSnap=await getDocs(appQuery);
   let matched=null;
   appSnap.forEach(docSnap=>{
