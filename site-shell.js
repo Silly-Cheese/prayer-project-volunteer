@@ -62,17 +62,36 @@ function createMobileNavToggle(){
   const links=document.querySelector('.nav-links');
   if(!nav||!links||document.getElementById('navToggle'))return;
   const button=document.createElement('button');
+  const backdrop=document.createElement('div');
   button.id='navToggle';
   button.className='nav-toggle';
   button.type='button';
   button.setAttribute('aria-label','Open navigation');
-  button.textContent='Menu';
+  button.setAttribute('aria-controls','primaryNavigation');
+  button.setAttribute('aria-expanded','false');
+  links.id=links.id||'primaryNavigation';
+  button.innerHTML=menuIcon();
+  backdrop.className='nav-backdrop';
+  backdrop.setAttribute('aria-hidden','true');
   nav.insertBefore(button,links);
-  button.addEventListener('click',()=>{
-    links.classList.toggle('open');
-    button.textContent=links.classList.contains('open')?'Close':'Menu';
-  });
+  document.body.appendChild(backdrop);
+  const setOpen=open=>{
+    links.classList.toggle('open',open);
+    backdrop.classList.toggle('open',open);
+    document.body.classList.toggle('nav-open',open);
+    button.setAttribute('aria-expanded',String(open));
+    button.setAttribute('aria-label',open?'Close navigation':'Open navigation');
+    button.innerHTML=open?closeIcon():menuIcon();
+  };
+  button.addEventListener('click',()=>setOpen(!links.classList.contains('open')));
+  backdrop.addEventListener('click',()=>setOpen(false));
+  links.addEventListener('click',event=>{if(event.target.closest('a'))setOpen(false);});
+  document.addEventListener('keydown',event=>{if(event.key==='Escape')setOpen(false);});
+  window.addEventListener('resize',()=>{if(innerWidth>900)setOpen(false);});
 }
+
+function menuIcon(){return '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke-width="2" stroke-linecap="round"/></svg>';}
+function closeIcon(){return '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" stroke-width="2" stroke-linecap="round"/></svg>';}
 
 function closeMoreMenuOnOutsideClick(){
   document.addEventListener('click',event=>{
