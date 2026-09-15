@@ -15,8 +15,10 @@ if (auth && db) {
     try {
       const snap = await getDoc(doc(db, 'volunteers', user.uid));
       const volunteer = snap.exists() ? { id: user.uid, ...snap.data() } : null;
-      if ($('dashboard') && volunteer) await enhanceVolunteerOps(volunteer);
-      installSecurityNotice(user);
+      if ($('dashboard') && volunteer) {
+        await enhanceVolunteerOps(volunteer);
+        installSecurityNotice(user);
+      }
     } catch (error) {
       console.warn('V2 operations layer could not load.', error);
     }
